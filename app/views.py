@@ -172,7 +172,7 @@ def make_comments(request):
     sql="insert into comments (comments_id,comment_text,usrname,url) values(default,'{}','{}','{}')".format(text,usrname,url)
     print(sql)
     cursor.execute(sql)
-    sql="select comment_text ,usrname from comments where url='{}'".format(url)
+    sql="select comments_id, comment_text ,usrname from comments where url='{}'".format(url)
     print(sql)
     cursor.execute(sql)
     res=dictfetchall(cursor)
@@ -252,6 +252,18 @@ def get_song(request):
     cursor.execute(sql)
     singer_info=dictfetchall(cursor)
     res={"song_info":song_info,"singer_info":singer_info}
+    return JsonResponse(res,safe=False)
+
+@csrf_exempt
+def get_song_by_name(request):
+    print("进入get_song_by_name")
+    name=request.POST.get('song_info')
+    print(name)
+    sql="select name,singer,time,url from musicsystem_info where name like '%{}%' union select name,singer,time,url from musicsystem_info where singer like '%{}%'".format(name,name)
+    print(sql)
+    cursor.execute(sql)
+    res=dictfetchall(cursor)
+    print(res)
     return JsonResponse(res,safe=False)
 
 @csrf_exempt

@@ -39,6 +39,7 @@ urlpatterns = [
     path('delete_comments',views.delete_comments),
     path('drop_song',views.drop_song),
     path('new_song',views.new_song),
-    path('delete_user',views.delete_user)
+    path('delete_user',views.delete_user),
+    path('get_song_by_name',views.get_song_by_name)
     ]
 
