@@ -35,7 +35,7 @@ def login(request):
             real_password=dictfetchall(cursor)
             # 从数据库获取密码
             if len(real_password)==0 or password !=real_password[0]["password"] :
-                response_text="密码错误，请重新输入"
+                response_text="用户名或密码错误，请重新输入"
                 return render(request,"login.html",{'response':response_text})
             else:
                 res=HttpResponseRedirect('/superadmin')
@@ -110,23 +110,28 @@ def drop_song(request):
     print("进入drop_song")
     url=request.POST.get('url')
     singer=request.POST.get('singer')
-    name=request.POST.get('name')
+    info=request.POST.get('info')
     # 按照歌手查询
-    if name==None:
-        print("按照歌手删除")
+    if info==None:
+        print('按照歌手删除')
         sql="(select name,url,time,singer from musicsystem_info where singer='{}') except (select name,url,time,singer from musicsystem_info where url='{}')".format(singer,url)
-        print(sql)
         cursor.execute(sql)
         res=dictfetchall(cursor)
-        print(res)
+        sql="update playlist set num=num-1 where playlist_id in (select playlist_id from playlist natural join music_belong where url='{}')".format(url)
+        # 触发器，在超级管理员删除某一首歌后，拥有该歌曲的歌单歌曲数量减少
+        cursor.execute(sql)
         sql="delete from musicsystem_info where url='{}'".format(url)
         cursor.execute(sql)
         return JsonResponse(res,safe=False)
     else:
         print("按照歌名删除")
-        sql="select name,url,time,singer from musicsystem_info where name='{}' except select name,url,time,singer from musicsystem_info where url='{}'".format(name,url)
+        sql="select name,singer,time,url from musicsystem_info where name like '%{}%' union select name,singer,time,url from musicsystem_info where singer like '%{}%'".format(info,info)
+        print(sql)
         cursor.execute(sql)
         res=dictfetchall(cursor)
+        sql="update playlist set num=num-1 where playlist_id in (select playlist_id from playlist natural join music_belong where url='{}')".format(url)
+        # 触发器，在超级管理员删除某一首歌后，拥有该歌曲的歌单歌曲数量减少
+        cursor.execute(sql)
         sql="delete from musicsystem_info where url='{}'".format(url)
         cursor.execute(sql)
         return JsonResponse(res,safe=False)
@@ -306,19 +311,17 @@ def add_song(request):
 @csrf_exempt
 def delete_song(request):
     playlist_id=request.POST.get('playlist_id')
-    print(playlist_id)
     url=request.POST.get('url')
     sql="delete from music_belong where url='{}' and playlist_id='{}' ".format(url,playlist_id)
-    print(sql)
+
     cursor.execute(sql)
     sql="select name,singer,time,url from music_belong natural join musicsystem_info where playlist_id='{}'".format(playlist_id)
-    print(sql)
+
     cursor.execute(sql)
     res=dictfetchall(cursor)
     # 触发器，删除歌曲后歌单歌曲数量减
     sql="update playlist set num=num-1 where playlist_id='{}'".format(playlist_id)
     cursor.execute(sql)
-    print(res)
     return JsonResponse(res,safe=False)
 
 @csrf_exempt
@@ -341,7 +344,7 @@ def create_playlist(request):
         return JsonResponse(res,safe=False)
     except:
         print("失败")
-        return JsonResponse({"msg":"创建失败"},safe=False)
+        return JsonResponse({"msg":"创建失败,换个歌单名试试吧"},safe=False)
 
 @csrf_exempt
 def delete_playlist(request):
@@ -399,10 +402,8 @@ def dictfetchall(cursor):
 
 @require_http_methods(["POST","GET"])
 def register(request):
-    print("进入register")
     response_text=HttpResponse()
     if(request.method == "GET"):
-        print("get")
         return render(request,"register.html")
     elif(request.method =="POST"):
             usrname=request.POST.get('usrname')
@@ -413,10 +414,6 @@ def register(request):
                 sex='男'
             else:
                 sex='女'
-            print(usrname)
-            print(sex)
-            print(password)
-            print(birth)
             if usrname==''  :
                 response_text="请填写完整信息"
                 return  render(request,'register.html',{'response':response_text})
